@@ -67,7 +67,6 @@ import javax.net.ssl.SSLContext
 @ConditionalOnProperty(prefix = "log.storage", name = ["type"], havingValue = "elasticsearch")
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)
 @AutoConfigureBefore(WebAutoConfiguration::class)
-@EnableConfigurationProperties(ESProperties::class)
 class ESAutoConfiguration : DisposableBean {
     @Value("\${log.elasticsearch.ip}")
     private val host: String? = null

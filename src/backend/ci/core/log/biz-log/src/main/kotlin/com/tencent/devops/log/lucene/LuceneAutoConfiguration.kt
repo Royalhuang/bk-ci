@@ -41,7 +41,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.AutoConfigureBefore
 import org.springframework.boot.autoconfigure.AutoConfigureOrder
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
@@ -51,13 +50,12 @@ import org.springframework.core.Ordered
 @ConditionalOnProperty(prefix = "log.storage", name = ["type"], havingValue = "lucene")
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)
 @AutoConfigureBefore(WebAutoConfiguration::class)
-@EnableConfigurationProperties(LuceneProperties::class)
 class LuceneAutoConfiguration {
 
-    @Value("\${log.lucene.dataDirectory}")
+    @Value("\${log.lucene.dataDirectory:#{null}}")
     private val dataDirectory: String? = null
-    @Value("\${log.lucene.indexMaxSize}")
-    private val indexMaxSize: Int? = Int.MAX_VALUE
+    @Value("\${log.lucene.indexMaxSize:#{null}}")
+    private val indexMaxSize: Int = Int.MAX_VALUE
 
     @Bean
     @Primary
@@ -65,24 +63,27 @@ class LuceneAutoConfiguration {
         if (dataDirectory.isNullOrBlank()) {
             throw IllegalArgumentException("Lucene storage path not config: log.lucene.dataDirectory")
         }
-        return LuceneClient(dataDirectory!!, indexService, redisOperation)
+        return LuceneClient(dataDirectory, indexService, redisOperation)
     }
 
     @Bean
+    @Suppress("LongParameterList")
     fun luceneLogService(
         @Autowired luceneClient: LuceneClient,
         @Autowired indexService: IndexService,
         @Autowired logStatusService: LogStatusService,
         @Autowired logTagService: LogTagService,
-        @Autowired defaultKeywords: List<String>,
         @Autowired logStorageBean: LogStorageBean,
         @Autowired buildLogPrintService: BuildLogPrintService
     ): LogService {
-        if (indexMaxSize == null || indexMaxSize!! <= 0) {
-            throw IllegalArgumentException("Lucene index max size of build invaild: log.lucene.indexMaxSize")
+        if (dataDirectory.isNullOrBlank()) {
+            throw IllegalArgumentException("Lucene index data directory invalid: log.lucene.indexMaxSize")
+        }
+        if (indexMaxSize <= 0) {
+            throw IllegalArgumentException("Lucene index max size of build invalid: log.lucene.indexMaxSize")
         }
         return LogServiceLuceneImpl(
-            indexMaxSize = indexMaxSize!!,
+            indexMaxSize = indexMaxSize,
             luceneClient = luceneClient,
             indexService = indexService,
             logStatusService = logStatusService,
