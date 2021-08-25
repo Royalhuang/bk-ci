@@ -44,7 +44,7 @@ object LuceneIndexUtils {
         val doc = Document()
         doc.add(StringField("buildId", buildId, Field.Store.YES))
         doc.add(StringField("message", logMessage.message, Field.Store.YES))
-        doc.add(StringField("timestamp", logMessage.timestamp.toString(), Field.Store.YES))
+        doc.add(NumericDocValuesField("timestamp", logMessage.timestamp))
         doc.add(StringField("tag", logMessage.tag, Field.Store.YES))
         doc.add(StringField("subTag", logMessage.subTag ?: "", Field.Store.YES))
         doc.add(StringField("jobId", logMessage.jobId, Field.Store.YES))

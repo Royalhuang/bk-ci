@@ -54,6 +54,7 @@ import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
 import kotlin.math.ceil
 
+@Suppress("LongParameterList", "LargeClass", "TooManyFunctions")
 class LogServiceLuceneImpl constructor(
     private val indexMaxSize: Int,
     private val luceneClient: LuceneClient,
@@ -66,12 +67,15 @@ class LogServiceLuceneImpl constructor(
 
     companion object {
         private val logger = LoggerFactory.getLogger(LogServiceLuceneImpl::class.java)
+        private const val CACHE_MAX_SIZE = 100000L
+        private const val CACHE_EXPIRE_MINUTES = 30L
+        private const val ADD_BATCH_ELAPSE_WARN = 1000
     }
 
     private val indexCache = Caffeine.newBuilder()
-        .maximumSize(100000)
-        .expireAfterAccess(30, TimeUnit.MINUTES)
-        .build<String/*BuildId*/, Boolean/*Has create the index*/>()
+        .maximumSize(CACHE_MAX_SIZE)
+        .expireAfterAccess(CACHE_EXPIRE_MINUTES, TimeUnit.MINUTES)
+        .build<String/*BuildId*/, Boolean/*Has created the index*/>()
 
     override fun pipelineFinish(event: PipelineBuildFinishBroadCastEvent) {
         with(event) {
@@ -108,7 +112,7 @@ class LogServiceLuceneImpl constructor(
             logStorageBean.batchWrite(elapse, success)
 
             // #4265 当日志消息处理时间过长时打印消息内容
-            if (elapse >= 1000 && event.logs.isNotEmpty()) logger.warn(
+            if (elapse >= ADD_BATCH_ELAPSE_WARN && event.logs.isNotEmpty()) logger.warn(
                 "[${event.buildId}] addBatchLogEvent spent too much time($elapse) with tag=${event.logs.first().tag}"
             )
         }
@@ -197,8 +201,8 @@ class LogServiceLuceneImpl constructor(
                 }
                 queryLogs.logs.addAll(logs)
                 success = true
-            } catch (ex: Exception) {
-                logger.error("Query more logs between lines failed, buildId: $buildId", ex)
+            } catch (ignore: Throwable) {
+                logger.error("Query more logs between lines failed, buildId: $buildId", ignore)
             }
             return queryLogs
         } finally {
@@ -321,8 +325,8 @@ class LogServiceLuceneImpl constructor(
             queryLogs.endLineNo = result.logs.firstOrNull()?.lineNo ?: 0
             queryLogs.logs = result.logs
             queryLogs.timeUsed = System.currentTimeMillis() - startEpoch
-        } catch (e: Exception) {
-            logger.error("Query end logs failed because of ${e.javaClass}. buildId: $buildId", e)
+        } catch (ignore: Throwable) {
+            logger.error("Query end logs failed because of ${ignore.javaClass}. buildId: $buildId", ignore)
             queryLogs.status = LogStatus.FAIL.status
         } finally {
             logStorageBean.query(System.currentTimeMillis() - startEpoch, success)
@@ -356,8 +360,8 @@ class LogServiceLuceneImpl constructor(
             success = logStatusSuccess(result.status)
             queryLogs.logs = result.logs
             queryLogs.timeUsed = System.currentTimeMillis() - startEpoch
-        } catch (e: Exception) {
-            logger.error("Query bottom logs failed because of ${e.javaClass}. buildId: $buildId", e)
+        } catch (ignore: Throwable) {
+            logger.error("Query bottom logs failed because of ${ignore.javaClass}. buildId: $buildId", ignore)
             queryLogs.status = LogStatus.FAIL.status
         } finally {
             logStorageBean.query(System.currentTimeMillis() - startEpoch, success)
@@ -534,7 +538,7 @@ class LogServiceLuceneImpl constructor(
             executeCount = executeCount
         )
 
-        val subTags = if (tag.isNullOrBlank()) null else logTagService.getSubTags(buildId, tag!!)
+        val subTags = if (tag.isNullOrBlank()) null else logTagService.getSubTags(buildId, tag)
         val queryLogs = QueryLogs(buildId = buildId, finished = logStatus, subTags = subTags)
 
         try {
@@ -596,7 +600,7 @@ class LogServiceLuceneImpl constructor(
             )
         }
 
-        val subTags = if (tag.isNullOrBlank()) null else logTagService.getSubTags(buildId, tag!!)
+        val subTags = if (tag.isNullOrBlank()) null else logTagService.getSubTags(buildId, tag)
         val moreLogs = QueryLogs(buildId = buildId, finished = logStatus, subTags = subTags)
 
         try {
@@ -654,7 +658,7 @@ class LogServiceLuceneImpl constructor(
             )
         }
 
-        val subTags = if (tag.isNullOrBlank()) null else logTagService.getSubTags(buildId, tag!!)
+        val subTags = if (tag.isNullOrBlank()) null else logTagService.getSubTags(buildId, tag)
         val queryLogs = QueryLogs(buildId = buildId, finished = logStatus, subTags = subTags)
 
         try {

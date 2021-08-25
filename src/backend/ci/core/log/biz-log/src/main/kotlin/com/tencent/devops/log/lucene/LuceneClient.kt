@@ -55,6 +55,7 @@ import java.sql.Date
 import java.text.SimpleDateFormat
 import javax.ws.rs.core.StreamingOutput
 
+@Suppress("LongParameterList")
 class LuceneClient constructor(
     private val logRootDirectory: String,
     private val indexService: IndexService,
@@ -66,8 +67,8 @@ class LuceneClient constructor(
         return try {
             writer.addDocuments(documents)
             writer.numRamDocs()
-        } catch (e: Exception) {
-            logger.error("[$buildId] batch index log ${documents.size} failed:", e)
+        } catch (ignore: Exception) {
+            logger.error("[$buildId] batch index log ${documents.size} failed:", ignore)
             writer.rollback()
             0
         } finally {
@@ -148,9 +149,9 @@ class LuceneClient constructor(
                         val timestamp = hit.getField("timestamp").stringValue().toLong()
                         val message = hit.getField("message").stringValue()
                             .removePrefix("\u001b[31m").removePrefix("\u001b[1m").replace(
-                            "\u001B[m",
-                            ""
-                        ).removeSuffix("\u001b[m")
+                                "\u001B[m",
+                                ""
+                            ).removeSuffix("\u001b[m")
                         val dateTime = sdf.format(Date(timestamp))
                         sb.append("""$dateTime : ${message}${System.lineSeparator()}""")
                     }
@@ -191,13 +192,13 @@ class LuceneClient constructor(
         val logs = mutableListOf<LogLine>()
         try {
             var docs = searcher.search(query, 4000, sort)
-                do {
-                    docs?.scoreDocs?.forEach {
-                        val hit = searcher.doc(it.doc)
-                        logs.add(genLogLine(hit))
-                    }
-                    docs = searcher.searchAfter(docs.scoreDocs.last(), query, 4000, sort, false)
-                } while (docs.scoreDocs.isEmpty())
+            do {
+                docs?.scoreDocs?.forEach {
+                    val hit = searcher.doc(it.doc)
+                    logs.add(genLogLine(hit))
+                }
+                docs = searcher.searchAfter(docs.scoreDocs.last(), query, 4000, sort, false)
+            } while (docs.scoreDocs.isEmpty())
             return logs
         } catch (e: Exception) {
             logger.error("[$buildId] fetch logs in streaming failed:", e)
@@ -236,9 +237,9 @@ class LuceneClient constructor(
                 val hit = searcher.doc(it.doc)
                 genLogLine(hit)
             }.toMutableList()
-        } catch (e: Exception) {
-            logger.error("[$buildId] fetch logs failed:", e)
-            throw e
+        } catch (ignore: Throwable) {
+            logger.error("[$buildId] fetch logs failed:", ignore)
+            throw ignore
         } finally {
             searcher.indexReader.close()
         }
@@ -248,9 +249,9 @@ class LuceneClient constructor(
         val searcher = prepareSearcher(buildId)
         try {
             return searcher.count(query)
-        } catch (e: Exception) {
-            logger.error("[$buildId] fetch logs failed:", e)
-            throw e
+        } catch (ignore: Throwable) {
+            logger.error("[$buildId] fetch logs failed:", ignore)
+            throw ignore
         } finally {
             searcher.indexReader.close()
         }
@@ -279,7 +280,7 @@ class LuceneClient constructor(
     private fun prepareDirectory(buildId: String, index: String): Directory {
         val subIndex = try {
             buildId.substring(0, 4)
-        } catch (e: Exception) {
+        } catch (ignore: Throwable) {
             ""
         }
         val dirFile = File(logRootDirectory + File.separator +
