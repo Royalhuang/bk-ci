@@ -55,7 +55,7 @@ import java.sql.Date
 import java.text.SimpleDateFormat
 import javax.ws.rs.core.StreamingOutput
 
-@Suppress("LongParameterList")
+@Suppress("LongParameterList", "TooManyFunctions")
 class LuceneClient constructor(
     private val logRootDirectory: String,
     private val indexService: IndexService,
@@ -160,9 +160,9 @@ class LuceneClient constructor(
                     docs = searcher.searchAfter(docs.scoreDocs.last(), query, 4000, sort, false)
                 } while (docs.scoreDocs.isEmpty())
             }
-        } catch (e: Exception) {
-            logger.error("[$buildId] fetch logs in streaming failed:", e)
-            throw e
+        } catch (ignore: Throwable) {
+            logger.error("[$buildId] fetch logs in streaming failed:", ignore)
+            throw ignore
         }
     }
 
