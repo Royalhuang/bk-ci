@@ -53,6 +53,7 @@ import com.tencent.devops.common.pipeline.pojo.StageReviewRequest
 import com.tencent.devops.common.pipeline.pojo.element.agent.ManualReviewUserTaskElement
 import com.tencent.devops.common.pipeline.pojo.element.atom.ManualReviewParam
 import com.tencent.devops.common.pipeline.pojo.element.atom.ManualReviewParamType
+import com.tencent.devops.common.pipeline.pojo.element.matrix.MatrixStatusElement
 import com.tencent.devops.common.pipeline.pojo.element.trigger.ManualTriggerElement
 import com.tencent.devops.common.pipeline.pojo.element.trigger.RemoteTriggerElement
 import com.tencent.devops.common.pipeline.utils.BuildStatusSwitcher
@@ -723,43 +724,29 @@ class PipelineBuildFacadeService(
         // 对人工审核提交时的参数做必填和范围校验
         checkManualReviewParam(params = params.params)
 
-        model.stages.forEachIndexed { index, s ->
+        model.stages.forEachIndexed { index, stage ->
             if (index == 0) {
                 return@forEachIndexed
             }
-            s.containers.forEach { cc ->
-                cc.elements.forEach { el ->
-                    if (el is ManualReviewUserTaskElement && el.id == elementId) {
-                        // Replace the review user with environment
-                        val reviewUser = mutableListOf<String>()
-                        el.reviewUsers.forEach { user ->
-                            reviewUser.addAll(
-                                buildVariableService.replaceTemplate(projectId, buildId, user)
-                                    .split(",")
-                            )
-                        }
-                        params.params.forEach {
-                            when (it.valueType) {
-                                ManualReviewParamType.BOOLEAN -> {
-                                    it.value = it.value ?: false
-                                }
-                                else -> {
-                                    it.value = buildVariableService.replaceTemplate(
-                                        projectId = projectId,
-                                        buildId = buildId,
-                                        template = it.value.toString()
-                                    )
-                                }
-                            }
-                        }
-                        if (!reviewUser.contains(userId)) {
-                            throw ErrorCodeException(
+            stage.containers.forEach { container ->
+                container.fetchGroupContainers()?.forEach { groupContainer ->
+                    groupContainer.elements.forEach { element ->
+                        if (element is MatrixStatusElement &&
+                            element.originClassType == ManualReviewUserTaskElement.classType
+                            && element.id == elementId) {
+                            val reviewUsers = element.reviewUsers ?: throw ErrorCodeException(
                                 statusCode = Response.Status.NOT_FOUND.statusCode,
                                 errorCode = ProcessMessageCode.ERROR_QUALITY_REVIEWER_NOT_MATCH,
                                 defaultMessage = "用户($userId)不在审核人员名单中",
                                 params = arrayOf(userId)
                             )
+                            doReview(reviewUsers, projectId, buildId, params, userId)
                         }
+                    }
+                }
+                container.elements.forEach { element ->
+                    if (element is ManualReviewUserTaskElement && element.id == elementId) {
+                        doReview(element.reviewUsers.toSet(), projectId, buildId, params, userId)
                     }
                 }
             }
@@ -776,6 +763,8 @@ class PipelineBuildFacadeService(
             buildDetailService.updateBuildCancelUser(projectId, buildId, userId)
         }
     }
+
+
 
     fun buildManualStartStage(
         userId: String,
@@ -2029,6 +2018,39 @@ class PipelineBuildFacadeService(
                 return@forEach
             }
             checkManualReviewParamOut(item.valueType, item, value)
+        }
+    }
+
+    private fun doReview(reviewUserSet: Set<String>, projectId: String, buildId: String, params: ReviewParam, userId: String) {
+        // Replace the review user with environment
+        val reviewUser = mutableListOf<String>()
+        reviewUserSet.forEach { user ->
+            reviewUser.addAll(
+                buildVariableService.replaceTemplate(projectId, buildId, user)
+                    .split(",")
+            )
+        }
+        params.params.forEach {
+            when (it.valueType) {
+                ManualReviewParamType.BOOLEAN -> {
+                    it.value = it.value ?: false
+                }
+                else -> {
+                    it.value = buildVariableService.replaceTemplate(
+                        projectId = projectId,
+                        buildId = buildId,
+                        template = it.value.toString()
+                    )
+                }
+            }
+        }
+        if (!reviewUser.contains(userId)) {
+            throw ErrorCodeException(
+                statusCode = Response.Status.NOT_FOUND.statusCode,
+                errorCode = ProcessMessageCode.ERROR_QUALITY_REVIEWER_NOT_MATCH,
+                defaultMessage = "用户($userId)不在审核人员名单中",
+                params = arrayOf(userId)
+            )
         }
     }
 }

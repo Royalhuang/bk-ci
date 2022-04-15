@@ -227,7 +227,7 @@ class PipelineBuildQualityService(
                                     pipelineId = pipelineId,
                                     buildId = buildId,
                                     taskId = element.interceptTask ?: ""
-                                ).toMutableList()
+                                )
                             }
                             if (element is MatrixStatusElement && element.originClassType ==
                                 QualityGateOutElement.classType) {
@@ -236,7 +236,7 @@ class PipelineBuildQualityService(
                                     pipelineId = pipelineId,
                                     buildId = buildId,
                                     taskId = element.interceptTask ?: ""
-                                ).toMutableList()
+                                )
                             }
                         }
                     }

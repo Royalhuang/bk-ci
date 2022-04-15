@@ -28,6 +28,7 @@
 package com.tencent.devops.common.pipeline.pojo.element.matrix
 
 import com.tencent.devops.common.pipeline.pojo.element.Element
+import com.tencent.devops.common.pipeline.pojo.element.atom.ManualReviewParam
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 
@@ -49,13 +50,26 @@ data class MatrixStatusElement(
     override var stepId: String?,
     @ApiModelProperty("原插件的类型标识")
     var originClassType: String,
-    // 当状态插件为质量红线插件是需要专门保存
-    @ApiModelProperty("审核人", required = true)
-    var reviewUsers: MutableList<String>? = null,
+    @ApiModelProperty("审核人列表", required = true)
+    var reviewUsers: Set<String>? = null,
+    // 当状态插件为质量红线时特有的参数
     @ApiModelProperty("拦截原子", required = false)
     var interceptTask: String? = null,
     @ApiModelProperty("拦截原子名称", required = false)
-    var interceptTaskName: String? = null
+    var interceptTaskName: String? = null,
+    // 当状态插件为人工审核时特有的参数
+    @ApiModelProperty("描述", required = false)
+    var desc: String? = "",
+    @ApiModelProperty("审核意见", required = false)
+    var suggest: String? = "",
+    @ApiModelProperty("参数列表", required = false)
+    var params: MutableList<ManualReviewParam> = mutableListOf(),
+    @ApiModelProperty("输出变量名空间", required = false)
+    var namespace: String? = "",
+    @ApiModelProperty("发送的通知类型", required = false)
+    var notifyType: MutableList<String>? = null,
+    @ApiModelProperty("发送通知的标题", required = false)
+    var notifyTitle: String? = null
 ) : Element(
     name = name,
     status = status,

@@ -40,6 +40,7 @@ import com.tencent.devops.common.pipeline.option.JobControlOption
 import com.tencent.devops.common.pipeline.option.MatrixControlOption
 import com.tencent.devops.common.pipeline.option.MatrixControlOption.Companion.MATRIX_CASE_MAX_COUNT
 import com.tencent.devops.common.pipeline.pojo.element.Element
+import com.tencent.devops.common.pipeline.pojo.element.agent.ManualReviewUserTaskElement
 import com.tencent.devops.common.pipeline.pojo.element.matrix.MatrixStatusElement
 import com.tencent.devops.common.pipeline.pojo.element.quality.QualityGateInElement
 import com.tencent.devops.common.pipeline.pojo.element.quality.QualityGateOutElement
@@ -431,26 +432,36 @@ class InitializeMatrixGroupStageCmd(
             // 刷新ID为新的唯一值，强制设为无法重试
             e.id = newTaskId
             e.canRetry = false
-            val (interceptTask, interceptTaskName) = when (e) {
-                is QualityGateInElement -> {
-                    Pair(e.interceptTask, e.interceptTaskName)
-                }
-                is QualityGateOutElement -> {
-                    Pair(e.interceptTask, e.interceptTaskName)
-                }
-                else -> {
-                    Pair(null, null)
-                }
-            }
-            MatrixStatusElement(
+            val statusElement = MatrixStatusElement(
                 name = e.name,
                 id = e.id,
                 stepId = e.stepId,
                 executeCount = executeCount,
-                originClassType = e.getClassType(),
-                interceptTask = interceptTask,
-                interceptTaskName = interceptTaskName
+                originClassType = e.getClassType()
             )
+            when (e) {
+                is QualityGateInElement -> {
+                    statusElement.reviewUsers = e.reviewUsers
+                    statusElement.interceptTask = e.interceptTask
+                    statusElement.interceptTaskName = e.interceptTaskName
+                }
+                is QualityGateOutElement -> {
+                    statusElement.reviewUsers = e.reviewUsers
+                    statusElement.interceptTask = e.interceptTask
+                    statusElement.interceptTaskName = e.interceptTaskName
+                }
+                is ManualReviewUserTaskElement -> {
+                    statusElement.reviewUsers = e.reviewUsers.toSet()
+                    statusElement.desc = e.desc
+                    statusElement.suggest = e.suggest
+                    statusElement.params = e.params
+                    statusElement.namespace = e.namespace
+                    statusElement.notifyType = e.notifyType
+                    statusElement.notifyTitle = e.notifyTitle
+                }
+                else -> Unit
+            }
+            statusElement
         }
     }
 

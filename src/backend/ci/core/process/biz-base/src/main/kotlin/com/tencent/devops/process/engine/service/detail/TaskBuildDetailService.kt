@@ -163,7 +163,7 @@ class TaskBuildDetailService(
                                 list.addAll(buildVariableService.replaceTemplate(projectId, buildId, reviewUser)
                                     .split(delimiters))
                             }
-                            e.reviewUsers = list
+                            e.reviewUsers = list.toSet()
                         } else if (e is QualityGateInElement || e is QualityGateOutElement ||
                             e.getTaskAtom() == QualityGateInElement.classType ||
                             e.getTaskAtom() == QualityGateOutElement.classType) {
